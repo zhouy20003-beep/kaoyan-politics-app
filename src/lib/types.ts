@@ -95,6 +95,26 @@ export interface ExamDraft {
   texts: Record<string, string>
 }
 
+export interface KnowledgeProgress {
+  favorites: string[]
+  important: string[]
+  visited: Record<string, string>
+}
+
+export interface ExamRecord {
+  id: string
+  at: string
+  scope: string
+  questionCount: number
+  durationSec: number
+  limitSec: number
+  score: number
+  total: number
+  correctCount: number
+  gradedCount: number
+  accuracy: number | null
+}
+
 export interface ProgressState {
   records: Record<string, AnswerRecord>
   favorites: string[]
@@ -104,6 +124,8 @@ export interface ProgressState {
   lastQuestionId: string | null
   papers: Record<string, PaperResult>
   examDraft: ExamDraft | null
+  knowledge: KnowledgeProgress
+  exams: ExamRecord[]
 }
 
 export interface Settings {

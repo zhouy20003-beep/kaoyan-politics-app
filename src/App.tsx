@@ -6,9 +6,13 @@ import { ShortcutsDialog } from './components/overlays/ShortcutsDialog'
 import { Brand, MobileNav, Sidebar, Topbar, pageMeta } from './components/shell/Shell'
 import { Button } from './components/ui/primitives'
 import { useHashRoute } from './hooks/useHashRoute'
+import { Ai } from './pages/Ai'
 import { Collection } from './pages/Collection'
 import { Dashboard } from './pages/Dashboard'
+import { Exam } from './pages/Exam'
 import { Insights } from './pages/Insights'
+import { Knowledge } from './pages/Knowledge'
+import { Me } from './pages/Me'
 import { Mistakes } from './pages/Mistakes'
 import { PaperSession } from './pages/PaperSession'
 import { Papers } from './pages/Papers'
@@ -31,7 +35,7 @@ function BootScreen({ error }: { error?: string | null }) {
       ) : (
         <>
           <p className="boot-title">正在载入 760 道真题</p>
-          <p className="boot-sub">按学科、专题与年份整理</p>
+          <p className="boot-sub">Echo 考研政治 AI 学习平台 · 打开即学</p>
           <span className="boot-bar" aria-hidden="true">
             <i />
           </span>
@@ -98,14 +102,26 @@ function Workspace() {
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
-    document.title = `${pageMeta(path).label} · 研政 POLIS`
+    document.title = `${pageMeta(path).label} · Echo 考研政治 AI`
   }, [path.join('/'), params.toString()])
 
   if (loading || error) return <BootScreen error={error} />
 
   let page = <Dashboard />
   let key = 'dashboard'
-  if (path[0] === 'practice') {
+  if (path[0] === 'knowledge') {
+    page = <Knowledge params={params} />
+    key = 'knowledge'
+  } else if (path[0] === 'ai') {
+    page = <Ai params={params} />
+    key = 'ai'
+  } else if (path[0] === 'exam') {
+    page = <Exam />
+    key = 'exam'
+  } else if (path[0] === 'me') {
+    page = <Me />
+    key = 'me'
+  } else if (path[0] === 'practice') {
     page = <Practice params={params} />
     key = 'practice'
   } else if (path[0] === 'papers' && path[1]) {
@@ -148,9 +164,9 @@ function Workspace() {
         </main>
         <footer className="site-footer">
           <span>
-            <strong>研政 POLIS</strong> · 一题一得，稳步向前
+            <strong>Echo 考研政治 AI</strong> · 打开即学，无需登录
           </span>
-          <span>真题用于个人学习 · 答案与解析以原始来源为准</span>
+          <span>760 道真实真题 · 学习记录保存在你的浏览器</span>
         </footer>
       </div>
       <MobileNav active={active} />

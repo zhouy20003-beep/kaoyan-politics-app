@@ -2,19 +2,28 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <meta name="theme-color" content="#f6f3ec" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#f5f8fd" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Echo 考研政治" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta
       name="description"
-      content="研政 POLIS · 2007—2026 考研政治真题刷题系统。专题练习、整卷模考、错题回顾与学情分析。"
+      content="Echo 考研政治 AI 学习平台 · 2007—2026 年 760 道真实真题、663 个知识点、AI 答疑与深度解析。打开即学，无需登录。"
     />
-    <title>研政 POLIS · 考研政治真题</title>
+    <title>Echo 考研政治 AI 学习平台</title>
     <script>
-      // Apply the persisted theme before first paint to avoid a flash.
+      // 首屏前应用已保存的主题，避免闪烁。
       ;(() => {
         try {
-          const saved = JSON.parse(localStorage.getItem('polis.settings') || 'null')
+          const parse = (key) => {
+            const raw = JSON.parse(localStorage.getItem(key) || 'null')
+            if (!raw) return null
+            return raw && raw.data ? raw.data : raw
+          }
+          const saved = parse('echo.settings.v1') || parse('polis.settings')
           const mode = saved?.theme || 'system'
           const dark =
             mode === 'dark' ||

@@ -1,28 +1,28 @@
+import { useMemo, type CSSProperties } from 'react'
 import {
   ArrowRight,
   ArrowUpRight,
+  BarChart3,
+  BookMarked,
   BookOpen,
+  Brain,
   ChevronRight,
+  Clock,
   Flame,
-  History,
-  RotateCcw,
+  ListChecks,
+  Newspaper,
   Sparkles,
   Star,
   Target,
+  Timer,
+  Wand2,
 } from 'lucide-react'
 import { Heatmap } from '../components/charts/Charts'
 import { Button, ProgressBar, Ring } from '../components/ui/primitives'
 import { SUBJECT_META, TYPE_META } from '../lib/data'
-import { cn } from '../lib/utils'
-import type { Question } from '../lib/types'
-import {
-  daysToExam,
-  formatDateCN,
-  greeting,
-  navigate,
-  pct,
-  relativeTime,
-} from '../lib/utils'
+import { buildKnowledgeIndex } from '../lib/knowledge'
+import type { Question, SubjectKey } from '../lib/types'
+import { cn, daysToExam, formatDateCN, greeting, navigate, pct, relativeTime } from '../lib/utils'
 import { useStudy } from '../store/StudyProvider'
 
 function pickStart(questions: Question[], lastId: string | null): Question | undefined {
@@ -33,27 +33,77 @@ function pickStart(questions: Question[], lastId: string | null): Question | und
   return [...questions].sort((a, b) => b.year - a.year || a.number - b.number)[0]
 }
 
+interface ModuleItem {
+  key: string
+  title: string
+  desc: string
+  href: string
+  icon: typeof BookOpen
+  meta?: string
+  accent?: string
+  badge?: number
+}
+
+function ModuleCard({ item }: { item: ModuleItem }) {
+  const Icon = item.icon
+  return (
+    <a className="echo-module" href={item.href} style={item.accent ? { '--module-accent': item.accent } as CSSProperties : undefined}>
+      <span className="echo-module-icon">
+        <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
+      </span>
+      <span className="echo-module-copy">
+        <strong>
+          {item.title}
+          {item.badge ? <i className="echo-module-badge">{item.badge}</i> : null}
+        </strong>
+        <em>{item.desc}</em>
+      </span>
+      <span className="echo-module-side">
+        {item.meta ? <span>{item.meta}</span> : null}
+        <ArrowUpRight size={14} aria-hidden="true" />
+      </span>
+    </a>
+  )
+}
+
 export function Dashboard() {
   const { questions, stats, progress } = useStudy()
+  const index = useMemo(() => buildKnowledgeIndex(questions), [questions])
   const start = pickStart(questions, progress.lastQuestionId)
   const overall = stats.total ? stats.practiced / stats.total : 0
   const exam = daysToExam()
-  const todayLeft = Math.max(0, 3 - stats.todayCount)
+  const todayTarget = 3
+  const todayDone = Math.min(stats.todayCount, todayTarget)
   const recent = Object.entries(progress.records)
     .sort((a, b) => (b[1].at || '').localeCompare(a[1].at || ''))
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([id, record]) => ({ question: questions.find((q) => q.id === id), record }))
     .filter((item): item is { question: Question; record: typeof item.record } => Boolean(item.question))
 
+  const yearSpan = useMemo(() => {
+    const years = questions.map((q) => q.year)
+    return years.length ? `${Math.min(...years)}—${Math.max(...years)}` : ''
+  }, [questions])
+
+  const subjectPointCount = (key: SubjectKey) => {
+    const tree = index.subjects.find((item) => item.key === key)
+    return tree ? `${tree.chapters.length} 章 · ${tree.count} 题` : ''
+  }
+
+  const objectiveCount = useMemo(
+    () => questions.filter((q) => q.type !== 'analysis').length,
+    [questions],
+  )
+
   const headline =
     stats.practiced === 0
-      ? '从第一道真题开始。'
-      : stats.todayCount >= 3
-        ? '今天的节奏接上了。'
-        : `再练${todayLeft === 1 ? '一' : todayLeft === 2 ? '两' : '三'}题。`
+      ? '从第一道真题开始'
+      : stats.todayCount >= todayTarget
+        ? '今天的任务完成了'
+        : `今天再学 ${todayTarget - stats.todayCount} 步`
 
   return (
-    <div className="page dashboard">
+    <div className="page dashboard echo-home">
       <header className="page-head">
         <div>
           <span className="eyebrow">
@@ -64,11 +114,7 @@ export function Dashboard() {
             {greeting()}，<span className="headline-accent">{headline}</span>
           </h1>
           <p className="page-sub">
-            {stats.practiced
-              ? `已练 ${stats.practiced} 道，客观题正确率 ${pct(stats.accuracy)}。${
-                  stats.wrong ? `还有 ${stats.wrong} 道题等着回看。` : '保持这个节奏。'
-                }`
-              : '2007—2026 年 760 道真题，按学科、专题与年份整理。先从一道开始。'}
+            {yearSpan} 年 {stats.total} 道真实真题 · {index.total} 个知识点 · 打开即学，不需要登录。
           </p>
         </div>
         <div className="page-head-aside">
@@ -77,125 +123,268 @@ export function Dashboard() {
             <strong>{exam.days}</strong>
             <em>天</em>
           </div>
-          <button type="button" className="quiet-link" onClick={() => navigate('/insights')}>
-            查看学情 <ArrowUpRight size={14} />
-          </button>
         </div>
       </header>
 
-      <section className="hero" aria-label="继续练习">
-        <div className="hero-glow" aria-hidden="true" />
-        <div className="hero-copy">
-          <span className="hero-kicker">
-            <span className="live-dot is-light" aria-hidden="true" />
-            {progress.lastQuestionId ? '继续上次' : '开始今天'}
+      <section className="echo-hero" aria-label="今日学习">
+        <div className="echo-hero-glow" aria-hidden="true" />
+        <div className="echo-hero-copy">
+          <span className="echo-hero-kicker">
+            <Sparkles size={14} aria-hidden="true" /> 今日学习
           </span>
           <h2>
-            {start
-              ? progress.lastQuestionId
-                ? '接着上次停下的地方，读完这一题。'
-                : '第一次来，就从最近一年的真题开始。'
-              : '题库正在载入'}
+            {stats.practiced === 0
+              ? '先做一道题，找到今天的感觉。'
+              : stats.todayCount >= todayTarget
+                ? '今天的三步已完成，可以再往前一点。'
+                : '今天的节奏，接着昨天的位置继续。'}
           </h2>
-          {start ? (
-            <div className="hero-meta">
-              <span className="hero-year">{start.year}</span>
-              <span>
-                {start.subjectKey} · {start.topic}
-              </span>
-              <span className="hero-type">{TYPE_META[start.type].short}</span>
-            </div>
-          ) : null}
-          <div className="hero-actions">
+          <p>
+            推荐顺序：先看一个知识点，再做一组选择题，最后让 AI 讲讲错在哪里。
+            每天三步，政治就不再是临时抱佛脚。
+          </p>
+          <div className="echo-hero-actions">
             <Button
               variant="primary"
               size="lg"
-              disabled={!start}
-              onClick={() => start && navigate(`/practice?q=${start.id}`)}
+              onClick={() => (start ? navigate(`/practice?q=${start.id}`) : navigate('/practice'))}
               trailing={<ArrowRight size={16} />}
             >
-              {progress.lastQuestionId ? '继续这道题' : '开始第一题'}
+              {progress.lastQuestionId ? '继续上次的题' : '开始第一题'}
             </Button>
-            <button
-              type="button"
-              className="hero-secondary"
-              onClick={() => navigate('/practice?random=1')}
-            >
-              随机抽一题
-            </button>
+            <Button variant="secondary" size="lg" onClick={() => navigate('/knowledge')} leading={<BookOpen size={15} />}>
+              看知识点
+            </Button>
+            <Button variant="ghost" size="lg" onClick={() => navigate('/ai')} leading={<Brain size={15} />}>
+              问 AI
+            </Button>
           </div>
-          <div className="hero-foot">
-            <span>{stats.todayCount ? `今天已完成 ${stats.todayCount} 题` : '今天还没有开始'}</span>
-            <span className="hero-foot-divider" aria-hidden="true" />
-            <span>{exam.days} 天后初试</span>
+          <div className="echo-hero-meta">
+            <span><Flame size={13} /> 连续 {stats.streak} 天</span>
+            <span>今天完成 {stats.todayCount} 题</span>
+            <span>题库进度 {Math.round(overall * 100)}%</span>
           </div>
         </div>
-        <div className="hero-ring">
-          <Ring value={overall} size={158} stroke={10} tone="paper">
-            <strong>{Math.round(overall * 100)}%</strong>
-            <span>题库进度</span>
+        <div className="echo-hero-ring">
+          <Ring value={todayDone / todayTarget} size={150} stroke={10} tone="accent">
+            <strong>{todayDone}<em>/{todayTarget}</em></strong>
+            <span>今日三步</span>
           </Ring>
-          <p>
-            已练 {stats.practiced} <span>/ {stats.total}</span>
-          </p>
+          {start ? (
+            <p className="echo-hero-next">
+              下一题：{start.year} · 第 {start.number} 题
+              <em>{TYPE_META[start.type].short}</em>
+            </p>
+          ) : null}
         </div>
       </section>
 
-      <section className="stat-grid" aria-label="学习数据">
-        <article className="stat-card">
-          <div className="stat-top">
-            <span className="stat-label">已练题目</span>
-            <BookOpen size={16} aria-hidden="true" />
-          </div>
-          <div className="stat-value">
-            {stats.practiced}
-            <span className="stat-unit">/ {stats.total}</span>
-          </div>
-          <ProgressBar value={overall} className="stat-bar" />
-          <span className="stat-note">题库已走过 {Math.round(overall * 100)}%</span>
-        </article>
-        <article className="stat-card">
-          <div className="stat-top">
-            <span className="stat-label">客观题正确率</span>
-            <Target size={16} aria-hidden="true" />
-          </div>
-          <div className="stat-value">
-            {stats.accuracy === null ? '—' : Math.round(stats.accuracy * 100)}
-            <span className="stat-unit">{stats.accuracy === null ? '' : '%'}</span>
-          </div>
-          <ProgressBar value={stats.accuracy ?? 0} tone="jade" className="stat-bar" />
-          <span className="stat-note">{stats.graded ? `${stats.graded} 道已判分 · ${stats.correct} 道答对` : '提交答案后开始统计'}</span>
-        </article>
-        <article className="stat-card">
-          <div className="stat-top">
-            <span className="stat-label">连续练习</span>
-            <Flame size={16} aria-hidden="true" />
-          </div>
-          <div className="stat-value">
-            {stats.streak}
-            <span className="stat-unit">天</span>
-          </div>
-          <ProgressBar value={Math.min(1, stats.streak / 14)} className="stat-bar" />
-          <span className="stat-note">本周共完成 {stats.weekCount} 题</span>
-        </article>
-        <button type="button" className="stat-card is-action" onClick={() => navigate('/mistakes')}>
-          <div className="stat-top">
-            <span className="stat-label">待巩固</span>
-            <RotateCcw size={16} aria-hidden="true" />
-          </div>
-          <div className="stat-value">
-            {stats.wrong}
-            <span className="stat-unit">题</span>
-          </div>
-          <ProgressBar value={stats.practiced ? stats.wrong / stats.practiced : 0} className="stat-bar" />
-          <span className="stat-note">
-            去错题本复习 <ArrowRight size={12} />
-          </span>
-        </button>
+      <section className="echo-stat-strip" aria-label="学习概览">
+        <div>
+          <span>已练题目</span>
+          <strong>{stats.practiced}<em>/ {stats.total}</em></strong>
+          <ProgressBar value={overall} />
+        </div>
+        <div>
+          <span>客观题正确率</span>
+          <strong>{pct(stats.accuracy)}</strong>
+          <em>{stats.graded} 道已判分</em>
+        </div>
+        <div>
+          <span>待巩固错题</span>
+          <strong>{stats.wrong}<em>题</em></strong>
+          <button type="button" onClick={() => navigate('/mistakes')}>
+            去错题本 <ArrowRight size={12} />
+          </button>
+        </div>
+        <div>
+          <span>收藏与模考</span>
+          <strong>{progress.favorites.length + progress.knowledge.favorites.length}<em>项收藏</em></strong>
+          <em>{progress.exams.length} 场模拟考试</em>
+        </div>
       </section>
 
-      <div className="dash-grid">
-        <section className="panel subject-panel" aria-label="学科进度">
+      <section className="echo-section" aria-label="政治知识点">
+        <header className="echo-section-head">
+          <div>
+            <span className="panel-label">KNOWLEDGE</span>
+            <h2>政治知识点</h2>
+          </div>
+          <a href="#/knowledge" className="quiet-link">
+            全部 {index.total} 个知识点 <ArrowRight size={13} />
+          </a>
+        </header>
+        <div className="echo-module-grid is-wide">
+          <ModuleCard
+            item={{
+              key: 'all-knowledge',
+              title: '政治知识点',
+              desc: '按科目、章节、知识点逐层浏览，支持搜索与关联推荐',
+              href: '#/knowledge',
+              icon: BookOpen,
+              meta: `${index.total} 个`,
+            }}
+          />
+          {SUBJECT_META.filter((s) => index.subjects.some((tree) => tree.key === s.key)).map((s) => (
+            <ModuleCard
+              key={s.key}
+              item={{
+                key: s.key,
+                title: s.name,
+                desc: s.desc,
+                href: `#/knowledge?subject=${encodeURIComponent(s.key)}`,
+                icon: BookOpen,
+                meta: subjectPointCount(s.key),
+                accent: s.color,
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="echo-section" aria-label="练习与考试">
+        <header className="echo-section-head">
+          <div>
+            <span className="panel-label">PRACTICE</span>
+            <h2>练习与考试</h2>
+          </div>
+          <a href="#/insights" className="quiet-link">
+            学习统计 <ArrowRight size={13} />
+          </a>
+        </header>
+        <div className="echo-module-grid">
+          <ModuleCard
+            item={{
+              key: 'papers',
+              title: '历年真题',
+              desc: '按年份整卷练习，保留原始题目与解析',
+              href: '#/papers',
+              icon: Clock,
+              meta: `${yearSpan}`,
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'practice',
+              title: '选择题练习',
+              desc: '单选、多选、随机、专项与错题重练',
+              href: '#/practice',
+              icon: ListChecks,
+              meta: `${objectiveCount} 道客观题`,
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'exam',
+              title: '模拟考试',
+              desc: '真实题库自动组卷，限时作答并自动评分',
+              href: '#/exam',
+              icon: Timer,
+              meta: `${progress.exams.length} 场记录`,
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'daily',
+              title: '今日训练',
+              desc: '优先错题与未练题，20 题一组，约 15 分钟',
+              href: '#/practice?smart=1',
+              icon: Flame,
+              meta: '智能组题',
+            }}
+          />
+        </div>
+      </section>
+
+      <section className="echo-section" aria-label="AI 工具">
+        <header className="echo-section-head">
+          <div>
+            <span className="panel-label">AI TOOLS</span>
+            <h2>AI 学习助手</h2>
+          </div>
+          <span className="echo-section-note">基于 DeepSeek · 结合真实题库</span>
+        </header>
+        <div className="echo-module-grid">
+          <ModuleCard
+            item={{
+              key: 'ai-chat',
+              title: 'AI 智能答疑',
+              desc: '解释知识点、比较易混概念、整理框架、出练习题',
+              href: '#/ai',
+              icon: Brain,
+              meta: '随时提问',
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'ai-explain',
+              title: 'AI 题目解析',
+              desc: '逐项辨析选项，指出考点并给出记忆提示',
+              href: '#/ai?tab=explain',
+              icon: Wand2,
+              meta: '做完题再看',
+            }}
+          />
+        </div>
+      </section>
+
+      <section className="echo-section" aria-label="我的学习">
+        <header className="echo-section-head">
+          <div>
+            <span className="panel-label">MY LEARNING</span>
+            <h2>我的学习</h2>
+          </div>
+          <a href="#/me" className="quiet-link">
+            本地记录与备份 <ArrowRight size={13} />
+          </a>
+        </header>
+        <div className="echo-module-grid">
+          <ModuleCard
+            item={{
+              key: 'mistakes',
+              title: '错题本',
+              desc: '自动收录做错的题，连续答对两次移入已掌握',
+              href: '#/mistakes',
+              icon: BookMarked,
+              meta: `${stats.wrong} 题待巩固`,
+              badge: stats.wrong,
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'collection',
+              title: '收藏夹',
+              desc: '收藏题目与知识点，支持分类查看',
+              href: '#/collection',
+              icon: Star,
+              meta: `${progress.favorites.length} 题 · ${progress.knowledge.favorites.length} 知识点`,
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'insights',
+              title: '学习统计',
+              desc: '学科正确率、薄弱专题与近 12 周学习节奏',
+              href: '#/insights',
+              icon: BarChart3,
+              meta: pct(stats.accuracy),
+            }}
+          />
+          <ModuleCard
+            item={{
+              key: 'me',
+              title: '我的记录',
+              desc: '导出、导入、清空本地学习数据',
+              href: '#/me',
+              icon: Target,
+              meta: '仅存本机',
+            }}
+          />
+        </div>
+      </section>
+
+      <div className="echo-home-lower">
+        <section className="panel" aria-label="学科进度">
           <header className="panel-head">
             <div>
               <span className="panel-label">SUBJECTS</span>
@@ -204,44 +393,38 @@ export function Dashboard() {
             <span className="panel-meta">按学科继续</span>
           </header>
           <div className="subject-list">
-            {SUBJECT_META.filter((subject) => stats.subjects.some((s) => s.key === subject.key)).map(
-              (subject) => {
-                const data = stats.subjects.find((s) => s.key === subject.key)
-                if (!data) return null
-                const ratio = data.total ? data.practiced / data.total : 0
-                return (
-                  <a
-                    key={subject.key}
-                    className="subject-row"
-                    href={`#/practice?subject=${encodeURIComponent(subject.key)}`}
+            {SUBJECT_META.map((subject) => {
+              const data = stats.subjects.find((s) => s.key === subject.key)
+              if (!data) return null
+              const ratio = data.total ? data.practiced / data.total : 0
+              return (
+                <a key={subject.key} className="subject-row" href={`#/knowledge?subject=${encodeURIComponent(subject.key)}`}>
+                  <span
+                    className="subject-symbol"
+                    style={{ color: subject.color, borderColor: `color-mix(in srgb, ${subject.color} 35%, transparent)` }}
                   >
-                    <span
-                      className="subject-symbol"
-                      style={{ color: subject.color, borderColor: `color-mix(in srgb, ${subject.color} 35%, transparent)` }}
-                    >
-                      {subject.initial}
-                    </span>
-                    <span className="subject-name">
-                      <strong>{subject.short}</strong>
-                      <em>{data.practiced} / {data.total} 题</em>
-                    </span>
-                    <span className="subject-bar">
-                      <i style={{ width: `${ratio * 100}%`, background: subject.color }} />
-                    </span>
-                    <span className="subject-accuracy">
-                      {data.accuracy === null ? '—' : `${Math.round(data.accuracy * 100)}%`}
-                      <em>正确率</em>
-                    </span>
-                    <ChevronRight size={15} className="subject-arrow" aria-hidden="true" />
-                  </a>
-                )
-              },
-            )}
+                    {subject.initial}
+                  </span>
+                  <span className="subject-name">
+                    <strong>{subject.short}</strong>
+                    <em>{data.practiced} / {data.total} 题</em>
+                  </span>
+                  <span className="subject-bar">
+                    <i style={{ width: `${ratio * 100}%`, background: subject.color }} />
+                  </span>
+                  <span className="subject-accuracy">
+                    {data.accuracy === null ? '—' : `${Math.round(data.accuracy * 100)}%`}
+                    <em>正确率</em>
+                  </span>
+                  <ChevronRight size={15} className="subject-arrow" aria-hidden="true" />
+                </a>
+              )
+            })}
           </div>
         </section>
 
-        <div className="dash-side">
-          <section className="panel heatmap-panel" aria-label="练习热力图">
+        <div className="echo-home-side">
+          <section className="panel" aria-label="练习节奏">
             <header className="panel-head">
               <div>
                 <span className="panel-label">RHYTHM</span>
@@ -252,15 +435,12 @@ export function Dashboard() {
             <Heatmap activity={progress.activity} weeks={12} />
           </section>
 
-          <section className="panel recent-panel" aria-label="最近练习">
+          <section className="panel" aria-label="最近练习">
             <header className="panel-head">
               <div>
                 <span className="panel-label">RECENT</span>
                 <h2>最近练习</h2>
               </div>
-              <span className="panel-meta">
-                <History size={12} aria-hidden="true" /> 继续回看
-              </span>
             </header>
             {recent.length ? (
               <div className="recent-list">
@@ -275,9 +455,7 @@ export function Dashboard() {
                       aria-hidden="true"
                     />
                     <span className="recent-main">
-                      <strong>
-                        {question.year} · 第 {question.number} 题
-                      </strong>
+                      <strong>{question.year} · 第 {question.number} 题</strong>
                       <em>{question.topic}</em>
                     </span>
                     <span className="recent-time">{relativeTime(record.at)}</span>
@@ -289,48 +467,13 @@ export function Dashboard() {
               <p className="recent-empty">完成第一道题后，这里会留下最近的练习轨迹。</p>
             )}
           </section>
-
-          <section className="quick-links" aria-label="快捷入口">
-            <a href="#/collection" className="quick-link">
-              <span className="quick-icon">
-                <Star size={16} />
-              </span>
-              <span>
-                <strong>收藏夹</strong>
-                <em>{stats.favorites} 道收藏</em>
-              </span>
-              <ArrowUpRight size={14} aria-hidden="true" />
-            </a>
-            <a href="#/insights" className="quick-link">
-              <span className="quick-icon">
-                <Target size={16} />
-              </span>
-              <span>
-                <strong>学情分析</strong>
-                <em>{stats.topics.length ? `${stats.topics.filter((t) => t.accuracy < 0.6).length} 个薄弱考点` : '练习后生成报告'}</em>
-              </span>
-              <ArrowUpRight size={14} aria-hidden="true" />
-            </a>
-          </section>
         </div>
       </div>
 
-      <section className="train-band" aria-label="今日训练">
-        <span className="train-mark" aria-hidden="true">
-          <Sparkles size={20} />
-        </span>
-        <div className="train-copy">
-          <span className="panel-label">TODAY&apos;S SET</span>
-          <h3>20 道题，专挑你最容易忘的。</h3>
-          <p>优先安排错题与未练题目，再混合薄弱学科。做完可以立刻看解析。</p>
-        </div>
-        <div className="train-side">
-          <span className="train-chip">约 15 分钟</span>
-          <Button variant="primary" onClick={() => navigate('/practice?smart=1')} trailing={<ArrowRight size={15} />}>
-            开始训练
-          </Button>
-        </div>
-      </section>
+      <p className="echo-home-note">
+        <Newspaper size={13} aria-hidden="true" />
+        时事政治以题库真实收录的专题为准；最新时政请以官方权威发布核对。
+      </p>
     </div>
   )
 }

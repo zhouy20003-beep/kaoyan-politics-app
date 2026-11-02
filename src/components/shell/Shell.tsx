@@ -3,16 +3,19 @@ import {
   BarChart3,
   BookMarked,
   BookOpen,
+  Brain,
   ChevronRight,
+  Clock,
+  FileText,
   Flame,
-  LayoutDashboard,
-  Layers,
+  Home,
   Moon,
   Search,
   Settings,
   Star,
   Sun,
   Target,
+  User,
 } from 'lucide-react'
 import { cn, daysToExam, formatDateCN, navigate } from '../../lib/utils'
 import { useStudy } from '../../store/StudyProvider'
@@ -35,21 +38,29 @@ function useResolvedTheme(): 'light' | 'dark' {
 }
 
 export const NAV_ITEMS = [
-  { key: '', label: '概览', en: 'OVERVIEW', icon: LayoutDashboard, group: '学习' },
-  { key: 'practice', label: '刷题', en: 'PRACTICE', icon: BookOpen, group: '学习' },
-  { key: 'papers', label: '整卷', en: 'PAPERS', icon: Layers, group: '学习' },
-  { key: 'mistakes', label: '错题', en: 'MISTAKES', icon: BookMarked, group: '复盘' },
-  { key: 'collection', label: '收藏', en: 'COLLECTION', icon: Star, group: '复盘' },
-  { key: 'insights', label: '分析', en: 'INSIGHTS', icon: BarChart3, group: '复盘' },
+  { key: '', label: '首页', en: 'HOME', icon: Home, group: '学习' },
+  { key: 'knowledge', label: '知识点', en: 'KNOWLEDGE', icon: BookOpen, group: '学习' },
+  { key: 'practice', label: '刷题', en: 'PRACTICE', icon: FileText, group: '学习' },
+  { key: 'papers', label: '历年真题', en: 'PAPERS', icon: Clock, group: '学习' },
+  { key: 'exam', label: '模拟考试', en: 'EXAM', icon: Target, group: '学习' },
+  { key: 'ai', label: 'AI 助教', en: 'AI TUTOR', icon: Brain, group: 'AI 工具' },
+  { key: 'mistakes', label: '错题本', en: 'MISTAKES', icon: BookMarked, group: '复盘' },
+  { key: 'collection', label: '收藏夹', en: 'COLLECTION', icon: Star, group: '复盘' },
+  { key: 'insights', label: '学习统计', en: 'STATS', icon: BarChart3, group: '复盘' },
+  { key: 'me', label: '我的', en: 'ME', icon: User, group: '我的' },
 ] as const
 
 const PAGE_META: Record<string, { label: string; eyebrow: string }> = {
-  '': { label: '概览', eyebrow: 'OVERVIEW' },
-  practice: { label: '刷题', eyebrow: 'PRACTICE' },
-  papers: { label: '整卷模考', eyebrow: 'PAPERS' },
+  '': { label: '首页', eyebrow: 'HOME' },
+  knowledge: { label: '政治知识点', eyebrow: 'KNOWLEDGE' },
+  practice: { label: '刷题练习', eyebrow: 'PRACTICE' },
+  papers: { label: '历年真题', eyebrow: 'PAPERS' },
+  exam: { label: '模拟考试', eyebrow: 'MOCK EXAM' },
+  ai: { label: 'AI 助教', eyebrow: 'AI TUTOR' },
   mistakes: { label: '错题本', eyebrow: 'MISTAKES' },
   collection: { label: '收藏夹', eyebrow: 'COLLECTION' },
-  insights: { label: '学情分析', eyebrow: 'INSIGHTS' },
+  insights: { label: '学习统计', eyebrow: 'STATS' },
+  me: { label: '我的', eyebrow: 'ME' },
   settings: { label: '设置', eyebrow: 'SETTINGS' },
 }
 
@@ -59,14 +70,14 @@ export function pageMeta(path: string[]): { label: string; eyebrow: string } {
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <a className={cn('brand', compact && 'brand-compact')} href="#/" aria-label="研政首页">
+    <a className={cn('brand', compact && 'brand-compact')} href="#/" aria-label="Echo 首页">
       <span className="brand-seal" aria-hidden="true">
-        研
+        E
       </span>
       {!compact ? (
         <span className="brand-text">
-          <strong>研政</strong>
-          <em>POLIS</em>
+          <strong>Echo</strong>
+          <em>POLITICS AI</em>
         </span>
       ) : null}
     </a>
@@ -76,22 +87,19 @@ export function Brand({ compact = false }: { compact?: boolean }) {
 export function Sidebar({ active }: { active: string }) {
   const { stats, progress } = useStudy()
   const exam = daysToExam()
-  const groups = ['学习', '复盘']
+  const groups = ['学习', 'AI 工具', '复盘', '我的']
 
   return (
     <aside className="sidebar" aria-label="主导航">
       <div className="sidebar-top">
         <Brand />
-        <span className="brand-tag">考研政治真题</span>
+        <span className="brand-tag">考研政治 AI 学习平台</span>
       </div>
 
       <nav className="side-nav">
-        {groups.map((group, groupIndex) => (
+        {groups.map((group) => (
           <div className="nav-group" key={group}>
-            <span className="nav-group-label">
-              <em>{String(groupIndex + 1).padStart(2, '0')}</em>
-              {group}
-            </span>
+            <span className="nav-group-label">{group}</span>
             {NAV_ITEMS.filter((item) => item.group === group).map((item) => {
               const Icon = item.icon
               const isActive = active === item.key
@@ -129,7 +137,7 @@ export function Sidebar({ active }: { active: string }) {
             <strong>{exam.days}</strong>
             <span>天</span>
           </div>
-          <p>每天三题，也是在往前走。</p>
+          <p>打开就能学，不需要登录。</p>
           <div className="exam-progress">
             <span style={{ width: `${Math.min(100, (stats.practiced / Math.max(1, stats.total)) * 100)}%` }} />
           </div>
@@ -147,7 +155,7 @@ export function Sidebar({ active }: { active: string }) {
         </div>
         <div className="side-note">
           <span className="live-dot" aria-hidden="true" />
-          数据保存在本机
+          记录保存在本机
         </div>
       </div>
       {progress.examDraft ? <span className="sr-only">有未完成的整卷模考</span> : null}
@@ -191,7 +199,7 @@ export function Topbar({
           <Brand compact />
         </div>
         <div className="crumb">
-          <span className="crumb-root">研政工作台</span>
+          <span className="crumb-root">Echo 学习平台</span>
           <ChevronRight size={12} aria-hidden="true" />
           <span className="crumb-current">{meta.label}</span>
         </div>
@@ -203,12 +211,7 @@ export function Topbar({
           <span>搜索真题、考点</span>
           <kbd>{IS_MAC ? '⌘K' : 'Ctrl K'}</kbd>
         </button>
-        <a
-          className="topbar-icon"
-          href="#/collection"
-          aria-label="收藏夹"
-          title="收藏夹"
-        >
+        <a className="topbar-icon" href="#/collection" aria-label="收藏夹" title="收藏夹">
           <Star size={17} strokeWidth={1.8} />
         </a>
         <button
@@ -236,11 +239,11 @@ export function Topbar({
 export function MobileNav({ active }: { active: string }) {
   const { stats } = useStudy()
   const items = [
-    { key: '', label: '概览', icon: LayoutDashboard },
-    { key: 'practice', label: '刷题', icon: BookOpen },
-    { key: 'papers', label: '整卷', icon: Layers },
-    { key: 'mistakes', label: '错题', icon: BookMarked, badge: stats.wrong },
-    { key: 'insights', label: '分析', icon: BarChart3 },
+    { key: '', label: '首页', icon: Home },
+    { key: 'knowledge', label: '知识点', icon: BookOpen },
+    { key: 'practice', label: '刷题', icon: FileText, badge: stats.wrong },
+    { key: 'ai', label: 'AI 助教', icon: Brain },
+    { key: 'me', label: '我的', icon: User },
   ]
   return (
     <nav className="mobile-nav" aria-label="移动端导航">

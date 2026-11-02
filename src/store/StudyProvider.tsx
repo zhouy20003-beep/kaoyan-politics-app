@@ -15,6 +15,7 @@ import {
   defaultSettings,
   downloadBackup,
   loadProgress,
+  loadProgressSnapshot,
   loadSettings,
   saveProgress,
   saveSettings,
@@ -23,6 +24,7 @@ import type {
   AnswerRecord,
   Draft,
   ExamDraft,
+  ExamRecord,
   FontMode,
   ProgressState,
   Question,
@@ -77,6 +79,16 @@ interface StudyContextValue {
   resetProgress: () => void
   removeRecord: (id: string) => void
   markMastered: (id: string) => void
+  toggleKnowledgeFavorite: (id: string) => boolean
+  toggleKnowledgeImportant: (id: string) => boolean
+  visitKnowledge: (id: string) => void
+  submitExam: (
+    questions: Question[],
+    answers: Record<string, string[]>,
+    scope: string,
+    durationSec: number,
+    limitSec: number,
+  ) => ExamRecord
 }
 
 const StudyContext = createContext<StudyContextValue | null>(null)
@@ -120,6 +132,21 @@ export function StudyProvider({ children }: { children: ReactNode }) {
         if (!alive) return
         setError(reason instanceof Error ? reason.message : '题库加载失败')
         setLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    loadProgressSnapshot()
+      .then((snapshot) => {
+        if (!alive || !snapshot) return
+        setProgress(snapshot.data)
+      })
+      .catch(() => {
+        /* IndexedDB 不可用时继续使用 localStorage 缓存 */
       })
     return () => {
       alive = false
@@ -417,7 +444,45 @@ export function StudyProvider({ children }: { children: ReactNode }) {
               }
             }
           }
-          return { ...prev, records, favorites: [...favorites], notes, activity, papers }
+          const knowledge = { ...prev.knowledge }
+          if (source.knowledge && typeof source.knowledge === 'object') {
+            const incoming = source.knowledge as { favorites?: unknown; important?: unknown; visited?: unknown }
+            const nextFavorites = new Set(knowledge.favorites)
+            const nextImportant = new Set(knowledge.important)
+            if (Array.isArray(incoming.favorites)) {
+              for (const id of incoming.favorites) if (typeof id === 'string') nextFavorites.add(id)
+            }
+            if (Array.isArray(incoming.important)) {
+              for (const id of incoming.important) if (typeof id === 'string') nextImportant.add(id)
+            }
+            const visited = { ...knowledge.visited }
+            if (incoming.visited && typeof incoming.visited === 'object') {
+              for (const [id, at] of Object.entries(incoming.visited)) {
+                if (typeof id === 'string' && typeof at === 'string') {
+                  if (!visited[id] || at > visited[id]) visited[id] = at
+                }
+              }
+            }
+            knowledge.favorites = [...nextFavorites]
+            knowledge.important = [...nextImportant]
+            knowledge.visited = visited
+          }
+          const exams = Array.isArray(source.exams)
+            ? [...source.exams, ...prev.exams]
+                .filter((item): item is ExamRecord => Boolean(item && typeof item === 'object' && item.id))
+                .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+                .slice(0, 20)
+            : prev.exams
+          return {
+            ...prev,
+            records,
+            favorites: [...favorites],
+            notes,
+            activity,
+            papers,
+            knowledge,
+            exams,
+          }
         })
         if (parsed?.settings && typeof parsed.settings === 'object') {
           const next = parsed.settings as Partial<Settings>
@@ -432,7 +497,7 @@ export function StudyProvider({ children }: { children: ReactNode }) {
         }
         notify(`已合并 ${merged} 道题的记录`)
       } catch {
-        notify('无法导入：请选择由研政导出的 JSON 文件')
+        notify('无法导入：请选择由 Echo 导出的 JSON 文件')
       }
     },
     [questions, notify],
@@ -467,6 +532,115 @@ export function StudyProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const toggleKnowledgeFavorite = useCallback((id: string): boolean => {
+    const exists = progress.knowledge.favorites.includes(id)
+    setProgress((prev) => ({
+      ...prev,
+      knowledge: {
+        ...prev.knowledge,
+        favorites: prev.knowledge.favorites.includes(id)
+          ? prev.knowledge.favorites.filter((x) => x !== id)
+          : [id, ...prev.knowledge.favorites],
+      },
+    }))
+    return !exists
+  }, [progress.knowledge.favorites])
+
+  const toggleKnowledgeImportant = useCallback((id: string): boolean => {
+    const exists = progress.knowledge.important.includes(id)
+    setProgress((prev) => ({
+      ...prev,
+      knowledge: {
+        ...prev.knowledge,
+        important: prev.knowledge.important.includes(id)
+          ? prev.knowledge.important.filter((x) => x !== id)
+          : [id, ...prev.knowledge.important],
+      },
+    }))
+    return !exists
+  }, [progress.knowledge.important])
+
+  const visitKnowledge = useCallback((id: string) => {
+    setProgress((prev) => {
+      const visited = { ...prev.knowledge.visited, [id]: new Date().toISOString() }
+      const entries = Object.entries(visited)
+        .sort((a, b) => b[1].localeCompare(a[1]))
+        .slice(0, 30)
+      return {
+        ...prev,
+        knowledge: { ...prev.knowledge, visited: Object.fromEntries(entries) },
+      }
+    })
+  }, [])
+
+  const submitExam = useCallback(
+    (
+      examQuestions: Question[],
+      answers: Record<string, string[]>,
+      scope: string,
+      durationSec: number,
+      limitSec: number,
+    ): ExamRecord => {
+      const now = new Date().toISOString()
+      let score = 0
+      let total = 0
+      let gradedCount = 0
+      let correctCount = 0
+      const patch: Record<string, AnswerRecord> = {}
+
+      for (const question of examQuestions) {
+        const points = question.type === 'multiple' ? 2 : 1
+        total += points
+        const selected = answers[question.id] || []
+        const correct = gradeAnswer(question, selected)
+        if (correct !== null) {
+          gradedCount += 1
+          if (correct) {
+            correctCount += 1
+            score += points
+          }
+        }
+        patch[question.id] = {
+          selected,
+          correct,
+          method: 'answer',
+          at: now,
+          attempts: (progress.records[question.id]?.attempts || 0) + 1,
+          streakCorrect: correct ? (progress.records[question.id]?.streakCorrect || 0) + 1 : 0,
+          wrongCount:
+            (progress.records[question.id]?.wrongCount || 0) + (correct === false ? 1 : 0),
+        }
+      }
+
+      const record: ExamRecord = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        at: now,
+        scope,
+        questionCount: examQuestions.length,
+        durationSec,
+        limitSec,
+        score,
+        total,
+        correctCount,
+        gradedCount,
+        accuracy: gradedCount ? correctCount / gradedCount : null,
+      }
+
+      setProgress((prev) => {
+        const key = dateKey()
+        return {
+          ...prev,
+          records: { ...prev.records, ...patch },
+          activity: { ...prev.activity, [key]: (prev.activity[key] || 0) + examQuestions.length },
+          exams: [record, ...prev.exams].slice(0, 20),
+        }
+      })
+
+      return record
+    },
+    [progress.records],
+  )
+
   const value: StudyContextValue = {
     questions,
     loading,
@@ -492,6 +666,10 @@ export function StudyProvider({ children }: { children: ReactNode }) {
     resetProgress,
     removeRecord,
     markMastered,
+    toggleKnowledgeFavorite,
+    toggleKnowledgeImportant,
+    visitKnowledge,
+    submitExam,
   }
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>

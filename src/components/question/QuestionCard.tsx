@@ -8,6 +8,7 @@ import {
   NotebookPen,
   RotateCcw,
   Star,
+  Wand2,
   X,
 } from 'lucide-react'
 import { hasKnownAnswer, resolveAsset, SUBJECT_MAP, TYPE_META } from '../../lib/data'
@@ -456,6 +457,17 @@ export function QuestionCard({
               <p>{question.referenceAnswer}</p>
             </div>
           ) : null}
+
+          <div className="answer-ai">
+            <div>
+              <strong>AI 深度解析</strong>
+              <span>逐项辨析选项、串联相关知识点，并给出一句记忆提示。</span>
+            </div>
+            <a className="btn btn-secondary btn-sm" href={`#/ai?tab=explain&q=${question.id}`}>
+              <Wand2 size={14} aria-hidden="true" />
+              <span className="btn-label">让 AI 讲讲</span>
+            </a>
+          </div>
 
           <div className="answer-foot">
             <SourceLinks question={question} />
