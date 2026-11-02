@@ -35,7 +35,7 @@ function BootScreen({ error }: { error?: string | null }) {
       ) : (
         <>
           <p className="boot-title">正在载入 760 道真题</p>
-          <p className="boot-sub">Echo 考研政治 AI 学习平台 · 打开即学</p>
+          <p className="boot-sub">桃子专属考研政治 AI 学习平台 · 打开即学</p>
           <span className="boot-bar" aria-hidden="true">
             <i />
           </span>
@@ -102,7 +102,7 @@ function Workspace() {
 
   useEffect(() => {
     window.scrollTo({ top: 0 })
-    document.title = `${pageMeta(path).label} · Echo 考研政治 AI`
+    document.title = `${pageMeta(path).label} · 桃子专属考研政治 AI`
   }, [path.join('/'), params.toString()])
 
   if (loading || error) return <BootScreen error={error} />
@@ -164,7 +164,7 @@ function Workspace() {
         </main>
         <footer className="site-footer">
           <span>
-            <strong>Echo 考研政治 AI</strong> · 打开即学，无需登录
+            <strong>桃子专属考研政治 AI</strong> · 打开即学，无需登录
           </span>
           <span>760 道真实真题 · 学习记录保存在你的浏览器</span>
         </footer>

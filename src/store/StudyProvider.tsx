@@ -497,7 +497,7 @@ export function StudyProvider({ children }: { children: ReactNode }) {
         }
         notify(`已合并 ${merged} 道题的记录`)
       } catch {
-        notify('无法导入：请选择由 Echo 导出的 JSON 文件')
+        notify('无法导入：请选择由桃子专属导出的 JSON 文件')
       }
     },
     [questions, notify],

@@ -120,7 +120,7 @@ function clip(text, max) {
   return value.length > max ? value.slice(0, max) : value
 }
 
-const PERSONA = `你是「Echo 考研政治 AI 助教」，只服务中国考研政治的复习。
+const PERSONA = `你是「桃子专属考研政治 AI 助教」，只服务中国考研政治的复习。
 回答必须遵守：
 1. 以考研政治通行教材表述与提供的【知识库材料】为依据；材料中没有的内容，明确说明“题库暂未收录，建议结合现行教材核对”，不得杜撰。
 2. 不得编造历年真题、官方答案、评分细则、政策文件原文或领导人讲话原文。

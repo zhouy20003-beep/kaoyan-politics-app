@@ -70,13 +70,13 @@ export function pageMeta(path: string[]): { label: string; eyebrow: string } {
 
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <a className={cn('brand', compact && 'brand-compact')} href="#/" aria-label="Echo 首页">
+    <a className={cn('brand', compact && 'brand-compact')} href="#/" aria-label="桃子专属 首页">
       <span className="brand-seal" aria-hidden="true">
         E
       </span>
       {!compact ? (
         <span className="brand-text">
-          <strong>Echo</strong>
+          <strong>桃子专属</strong>
           <em>POLITICS AI</em>
         </span>
       ) : null}
@@ -199,7 +199,7 @@ export function Topbar({
           <Brand compact />
         </div>
         <div className="crumb">
-          <span className="crumb-root">Echo 学习平台</span>
+          <span className="crumb-root">桃子专属 学习平台</span>
           <ChevronRight size={12} aria-hidden="true" />
           <span className="crumb-current">{meta.label}</span>
         </div>

@@ -62,7 +62,7 @@ export function Me() {
           </span>
           <h1>我的学习</h1>
           <p className="page-sub">
-            Echo 不设账号系统。你的错题、收藏、练习记录和模拟考试都保存在当前浏览器里。
+            桃子专属 不设账号系统。你的错题、收藏、练习记录和模拟考试都保存在当前浏览器里。
           </p>
         </div>
       </header>
@@ -264,7 +264,7 @@ export function Me() {
       <section className="me-tip">
         <Info size={16} aria-hidden="true" />
         <p>
-          Echo 是免费、免登录的学习工具。清除浏览器缓存、使用无痕模式或更换设备可能导致记录丢失，
+          桃子专属 是免费、免登录的学习工具。清除浏览器缓存、使用无痕模式或更换设备可能导致记录丢失，
           请定期使用「导出学习记录」保存一份 JSON 备份。
         </p>
       </section>

@@ -1,6 +1,6 @@
 {
-  "name": "Echo 考研政治 AI 学习平台",
-  "short_name": "Echo 考研政治",
+  "name": "桃子专属考研政治 AI 学习平台",
+  "short_name": "桃子专属",
   "description": "760 道真实考研政治真题、663 个知识点、AI 答疑与模拟考试。打开即学，无需登录。",
   "lang": "zh-CN",
   "start_url": "./index.html",

@@ -158,7 +158,7 @@ export interface BackupFile {
 
 export function buildBackup(progress: ProgressState, settings: Settings): BackupFile {
   return {
-    app: 'Echo 考研政治 AI 学习平台',
+    app: '桃子专属考研政治 AI 学习平台',
     version: 2,
     exportedAt: new Date().toISOString(),
     progress,
@@ -174,7 +174,7 @@ export function downloadBackup(progress: ProgressState, settings: Settings): voi
   const anchor = document.createElement('a')
   const stamp = dateKey()
   anchor.href = url
-  anchor.download = `Echo学习记录_${stamp}.json`
+  anchor.download = `桃子专属学习记录_${stamp}.json`
   anchor.click()
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
